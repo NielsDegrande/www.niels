@@ -27,6 +27,7 @@ test_http_response() {
 # Function to test hostname connectivity and HTTP responses
 test_hostname() {
     local hostname="$1"
+    local skip_ping="$2"
     local exit_code=0
     
     if [ -z "$hostname" ]; then
@@ -37,17 +38,19 @@ test_hostname() {
     echo "Testing hostname: $hostname"
     echo "================================"
     
-    # Test ping
-    echo "1. Testing ping to $hostname:"
-    if ping -c 1 "$hostname" >/dev/null 2>&1; then
-        echo "   ✓ Ping successful"
+    # Test ping (unless skipped)
+    if [ "$skip_ping" != "true" ]; then
+        echo "1. Testing ping to $hostname:"
+        if ping -c 1 "$hostname" >/dev/null 2>&1; then
+            echo "   ✓ Ping successful"
+        else
+            echo "   ✗ Ping failed"
+            exit_code=1
+        fi
+        echo "2. Testing HTTP responses:"
     else
-        echo "   ✗ Ping failed"
-        exit_code=1
+        echo "1. Testing HTTP responses:"
     fi
-    
-    # Test HTTP responses
-    echo "2. Testing HTTP responses:"
     
     # Test without protocol
     if ! test_http_response "$hostname" "$hostname"; then
@@ -76,6 +79,29 @@ test_hostname() {
 
 # Main execution
 main() {
+    local skip_ping="false"
+    
+    # Parse command line arguments
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --no-ping)
+                skip_ping="true"
+                shift
+                ;;
+            -h|--help)
+                echo "Usage: $0 [--no-ping]"
+                echo "  --no-ping    Skip ping tests (useful for GitHub Actions)"
+                echo "  -h, --help   Show this help message"
+                exit 0
+                ;;
+            *)
+                echo "Unknown option: $1"
+                echo "Use --help for usage information"
+                exit 1
+                ;;
+        esac
+    done
+    
     local hostnames=(
         "degran.de"
         "www.degran.de"
@@ -86,11 +112,14 @@ main() {
     local overall_exit_code=0
     
     echo "Testing all hostnames..."
+    if [ "$skip_ping" = "true" ]; then
+        echo "Ping tests will be skipped"
+    fi
     echo "================================"
     echo
     
     for hostname in "${hostnames[@]}"; do
-        test_hostname "$hostname"
+        test_hostname "$hostname" "$skip_ping"
         local test_exit_code=$?
         
         if [ $test_exit_code -ne 0 ]; then
@@ -110,5 +139,5 @@ main() {
     return $overall_exit_code
 }
 
-# Run the main function
-main
+# Run the main function with all command line arguments
+main "$@"
