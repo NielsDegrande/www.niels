@@ -1,0 +1,20 @@
+name: Health Check
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:  # Allows manual triggering from GitHub UI
+
+jobs:
+  health-check:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      
+    - name: Make health check script executable
+      run: chmod +x scripts/health-check.sh
+      
+    - name: Run health check
+      run: ./scripts/health-check.sh
